@@ -1,3 +1,3 @@
 # TinyMake
 
-Primite cross-platform (.NET Core) implementation of Make
+Primitive cross-platform (.NET Core) implementation of Make
