@@ -3,16 +3,27 @@ using System.IO;
 
 namespace TinyMake
 {
+    /// <summary>
+    /// Main class of the program.
+    /// Contains core methods.
+    /// </summary>
     public class Program
     {
-        private const string DEFAULT_MAKEFILE = "Makefile";
+        /// <summary>
+        /// Name of the Makefile file.
+        /// </summary>
+        private const string MAKEFILE_NAME = "Makefile";
 
+        /// <summary>
+        /// Entry point of the program.
+        /// </summary>
+        /// <param name="args">Command line arguments supplied to the program.</param>
         private static void Main(string[] args)
         {
             // Get the current directory path
             string currentPath = Directory.GetCurrentDirectory();
             // Get the path of the Makefile
-            string makefilePath = Path.Combine(currentPath, DEFAULT_MAKEFILE);
+            string makefilePath = Path.Combine(currentPath, MAKEFILE_NAME);
 
             if (!File.Exists(makefilePath))
             {
@@ -25,10 +36,15 @@ namespace TinyMake
             // TODO: Process the Makefile
         }
 
-        public static void ExitWithError(string errorMsg)
+        /// <summary>
+        /// Prints an error message and exits the program.
+        /// </summary>
+        /// <param name="errorMsg">Error message to be printed.</param>
+        /// <param name="exitCode">Exit code to be used. (-1 by default)</param>
+        public static void ExitWithError(string errorMsg, int exitCode = -1)
         {
             Console.Error.WriteLine("ERROR: " + errorMsg);
-            Environment.Exit(-1);
+            Environment.Exit(exitCode);
         }
     }
 }
