@@ -10,11 +10,6 @@ namespace TinyMake
     public class Program
     {
         /// <summary>
-        /// Name of the Makefile file.
-        /// </summary>
-        private const string MAKEFILE_NAME = "Makefile";
-
-        /// <summary>
         /// Entry point of the program.
         /// </summary>
         /// <param name="args">Command line arguments supplied to the program.</param>
@@ -22,20 +17,9 @@ namespace TinyMake
         {
             // Get the current directory path
             string currentPath = Directory.GetCurrentDirectory();
-            // Get the path of the Makefile
-            string makefilePath = Path.Combine(currentPath, MAKEFILE_NAME);
 
-            // Exit with an error if there is no Makefile in the currect directory
-            if (!File.Exists(makefilePath))
-            {
-                ExitWithError($"No Makefile in current directory ({currentPath})");
-            }
-
-            // Read the whole Makefile into a string
-            string makefileStr = File.ReadAllText(makefilePath);
-
-            // Construct a Makefile object from the string
-            Makefile makefile = new Makefile(makefileStr);
+            // Construct a Makefile object with current directory as the base directory
+            Makefile makefile = new Makefile(currentPath);
             // Execute the rules specified by the user
             makefile.Execute(args);
         }
