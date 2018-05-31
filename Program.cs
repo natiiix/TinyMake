@@ -25,15 +25,19 @@ namespace TinyMake
             // Get the path of the Makefile
             string makefilePath = Path.Combine(currentPath, MAKEFILE_NAME);
 
+            // Exit with an error if there is no Makefile in the currect directory
             if (!File.Exists(makefilePath))
             {
                 ExitWithError($"No Makefile in current directory ({currentPath})");
             }
 
             // Read the whole Makefile into a string
-            string makefile = File.ReadAllText(makefilePath);
+            string makefileStr = File.ReadAllText(makefilePath);
 
-            // TODO: Process the Makefile
+            // Construct a Makefile object from the string
+            Makefile makefile = new Makefile(makefileStr);
+            // Execute the rules specified by the user
+            makefile.Execute(args);
         }
 
         /// <summary>
