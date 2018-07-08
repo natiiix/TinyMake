@@ -14,7 +14,7 @@ namespace TinyMake
         private const string FILEPATH = @"[\w\.\-\(\)\[\]\{\}\\/]+";
 
         private static readonly Regex REGEX_EMPTY_LINE = new Regex(@"^\s*(?:#.*)?$");
-        private static readonly Regex REGEX_RULE_HEAD = new Regex($@"^({FILEPATH})\s*:\s*((?:{FILEPATH} )*{FILEPATH})?\s*(?:#.*)?$");
+        private static readonly Regex REGEX_RULE_HEAD = new Regex($@"^((?:{FILEPATH} )*{FILEPATH})\s*:\s*((?:{FILEPATH} )*{FILEPATH})?\s*(?:#.*)?$");
         private static readonly Regex REGEX_COMMAND = new Regex(@"^(?:\t| {4})(.*)$");
         private static readonly Regex REGEX_TIMESTAMP_RECORD = new Regex($@"^({FILEPATH}):(\d+)$");
 
@@ -59,34 +59,34 @@ namespace TinyMake
             // Execute the first rule
             if (targets.Length == 0)
             {
-                ExecuteIfChanged(0);
+                ExecuteIfChanged(rules.First());
             }
             // At least one target has been specified
             else
             {
-                // Indices of rules to be executed
-                List<int> ruleIds = new List<int>();
+                // Rules to be executed
+                HashSet<Rule> rulesToExec = new HashSet<Rule>();
 
-                // Iterate through user-specified targets and
-                // find a rule for each one of them
+                // Iterate through the request targets
                 foreach (string target in targets)
                 {
-                    // Find a rule with the specified target
-                    int id = rules.FindIndex(x => x.Target == target);
+                    // Find all rules with the target
+                    IEnumerable<Rule> targetRules = rules.FindAll(x => x.Targets.Contains(target));
 
                     // There is no rule with this target
-                    if (id < 0)
+                    if (targetRules.Count() == 0)
                     {
                         Program.ExitWithError($"No rule defined for making target \"{target}\"");
                     }
 
-                    ruleIds.Add(id);
+                    // Add this target's rules to the set of rules to execute
+                    rulesToExec.UnionWith(targetRules);
                 }
 
                 // Execute rules for each target one by one
-                foreach (int id in ruleIds)
+                foreach (Rule rule in rulesToExec)
                 {
-                    ExecuteIfChanged(id);
+                    ExecuteIfChanged(rule);
                 }
             }
 
@@ -100,7 +100,7 @@ namespace TinyMake
             bool atLeastOneHead = false;
 
             // Temporary rule properties
-            string target = string.Empty;
+            string[] targets = new string[0];
             string[] dependencies = new string[0];
             List<string> commands = new List<string>();
 
@@ -124,23 +124,23 @@ namespace TinyMake
                     if (atLeastOneHead)
                     {
                         // Add the previous rule to the list of rules
-                        rules.Add(new Rule(target, dependencies, commands.ToArray()));
+                        rules.Add(new Rule(targets, dependencies, commands.ToArray()));
 
                         // Empty the command list
                         commands = new List<string>();
                     }
 
                     // Extract the rule target from the head
-                    target = matchHead.Groups[1].Value;
+                    targets = SplitFileNames(matchHead.Groups[1].Value);
 
-                    // A rule with the specified target already exists
-                    if (rules.Exists(x => x.Target == target))
+                    // Duplicit targets
+                    if (targets.Length > targets.Distinct().Count())
                     {
-                        Program.ExitWithError($"Redefining rule for target \"{target}\" on line {i + 1}");
+                        Program.ExitWithError($"Rule defined on line {i + 1} contains duplicit targets: \"{ln}\"");
                     }
 
                     // Extract rule dependencies from the head
-                    dependencies = matchHead.Groups[2].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    dependencies = SplitFileNames(matchHead.Groups[2].Value);
 
                     // Duplicit dependencies
                     if (dependencies.Length > dependencies.Distinct().Count())
@@ -174,7 +174,7 @@ namespace TinyMake
             }
 
             // Add the last rule to the list
-            rules.Add(new Rule(target, dependencies, commands.ToArray()));
+            rules.Add(new Rule(targets, dependencies, commands.ToArray()));
         }
 
         private void LoadTimestamps()
@@ -213,9 +213,9 @@ namespace TinyMake
             File.WriteAllText(timestampsPath, timestampsStr);
         }
 
-        private bool ExecuteIfChanged(int ruleId)
+        private bool ExecuteIfChanged(Rule rule)
         {
-            string[] deps = rules[ruleId].Dependencies;
+            string[] deps = rule.Dependencies;
 
             // See if any of the dependencies have changed
             bool changed = deps.Any(x => ExecuteIfChanged(x));
@@ -224,21 +224,35 @@ namespace TinyMake
             if (changed || deps.Count() == 0)
             {
                 // Let the user know what rule is being executed
-                Console.WriteLine($"INFO: Making target \"{rules[ruleId].Target}\"");
+                Console.WriteLine($"INFO: Making target(s) \"{string.Join(Environment.NewLine, rule.Targets)}\"");
                 // Execute the rule commands
-                rules[ruleId].ExecuteCommands();
+                rule.ExecuteCommands();
             }
 
             return changed;
         }
 
+        private bool ExecuteIfChanged(IEnumerable<Rule> rulesToExec)
+        {
+            bool anyChanged = false;
+
+            // Iterate through the rules and execute those whose dependencies have changed
+            foreach (Rule rule in rulesToExec)
+            {
+                // Return true if any dependency of any of the rules has changed
+                anyChanged |= ExecuteIfChanged(rule);
+            }
+
+            return anyChanged;
+        }
+
         private bool ExecuteIfChanged(string dependency)
         {
-            // Try to find a rule with the dependency as its target
-            int ruleId = rules.FindIndex(x => x.Target == dependency);
+            // Find all rules with the dependency as their target
+            IEnumerable<Rule> rulesToExec = rules.FindAll(x => x.Targets.Contains(dependency));
 
             // No such rule
-            if (ruleId < 0)
+            if (rulesToExec.Count() == 0)
             {
                 if (File.Exists(dependency))
                 {
@@ -268,11 +282,16 @@ namespace TinyMake
             // There is such a rule
             else
             {
-                return ExecuteIfChanged(ruleId);
+                foreach (Rule rule in rulesToExec)
+                {
+                    return ExecuteIfChanged(rule);
+                }
             }
 
             // This should never happen
             throw new Exception();
         }
+
+        private static string[] SplitFileNames(string str) => str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
     }
 }

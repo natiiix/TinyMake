@@ -5,13 +5,13 @@ namespace TinyMake
 {
     public class Rule
     {
-        public string Target { get; private set; }
+        public string[] Targets { get; private set; }
         public string[] Dependencies { get; private set; }
         public string[] Commands { get; private set; }
 
-        public Rule(string target, string[] dependencies, string[] commands)
+        public Rule(string[] targets, string[] dependencies, string[] commands)
         {
-            Target = target;
+            Targets = targets;
             Dependencies = dependencies;
             Commands = commands;
         }
